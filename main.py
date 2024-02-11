@@ -195,6 +195,55 @@ def filtering_transactions(transactions):
         print()
 
 
+def found_str_value(part, str_name):
+    with open(f"user_info_{part}.txt", 'r') as f:
+        lines = f.read().split("\n")[:-1]
+        for line in lines:
+            if line.split("|")[0] == str_name:
+                value = float(line.split("|")[1])
+            else:
+                pass
+        f.close()
+    return value
+
+
+def overwrite_string_value(part, str_name, file_name, new_value):
+    with open(f'{file_name}_{part}.txt', "r") as f:
+        lines = f.read().split("\n")[:-1]
+        f.close()
+    with open(f'{file_name}_{part}.txt', "w") as b:
+        for line in lines:
+            if line.split("|")[0] != str_name:
+                b.write(f'{line}\n')
+            else:
+                b.write(f'{line.split("|")[0]}|{new_value}\n')
+        b.close()
+
+
+def create_transactions(sender, file_name):
+    print(f'Отправитель: {sender}')
+    recipient = input(f'Введите имя получателя:')
+    sender_money = found_str_value(sender, "Деньги")
+    print(f'Если на счете получателя недостаточно денег, '
+          f'то будет операция будет оложена до пополнения счета отправителя.')
+    transaction_amount = float(input(f'Введите сумму, которыую хотите отправить:'))
+    try:
+        recipient_money = found_str_value(recipient, "Деньги")
+        if sender_money >= transaction_amount:
+            overwrite_string_value(sender, "Деньги", file_name, sender_money - transaction_amount)
+            overwrite_string_value(recipient, "Деньги", file_name, recipient_money + transaction_amount)
+            print(f'{transaction_amount} успешно отправлены.\n ')
+            return sender_money - transaction_amount
+        else:
+            with open(f'delayed_transactions.txt', "a") as f:
+                f.write(f'{sender}|{recipient}|{transaction_amount}\n')
+                f.close()
+            return sender_money
+    except FileNotFoundError:
+        print(f'В системе нет пользователя с именем {recipient}.')
+        return sender_money
+
+
 def print_balance(money):
     print("Ваш баланс:", money)
 
@@ -275,6 +324,38 @@ def upload_acc(name, file_name):
         exit()
 
 
+def delete_line(file_path, line_number):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    with open(file_path, 'w') as file:
+        for index, line in enumerate(lines, 0):
+            if index != line_number:
+                file.write(line)
+
+
+def delayed_transaction_execution(money, name=None):
+    current_user_mon = money
+    with open(f"delayed_transactions.txt", 'r') as f:
+        lines = f.read().split("\n")[:-1]
+        for line in lines:
+            value = float(line.split("|")[2])
+            sen_mon = found_str_value(line.split("|")[0], "Деньги")
+            res_mon = found_str_value(line.split("|")[1], "Деньги")
+            if sen_mon > value:
+                overwrite_string_value(line.split("|")[0], "Деньги", "user_info", sen_mon - value)
+                overwrite_string_value(line.split("|")[1], "Деньги", "user_info", res_mon + value)
+                delete_line("delayed_transactions.txt", lines.index(line))
+                if name == line.split("|")[0]:
+                    current_user_mon = sen_mon - value
+            else:
+                pass
+    f.close()
+    if current_user_mon is not None:
+        return current_user_mon
+    else:
+        return sen_mon
+
+
 def password_hash(password):
     symbol_sum = 0
     symbol_product = 0
@@ -300,10 +381,10 @@ menu = {
     6: trans_stats,
     7: apply_trans,
     8: filtering_transactions,
-    9: set_limit,
-    10: print_balance,
-    11: upload_acc,
-    12: exit_program
+    9: create_transactions,
+    10: set_limit,
+    11: print_balance,
+    13: exit_program
 }
 
 dic = {
@@ -313,10 +394,10 @@ dic = {
     6: 'menu[6](user_transactions)',
     7: 'user_transactions, acc_money = menu[7](user_transactions, user_info["Деньги"], user_info["Лимит"])',
     8: 'menu[8](user_transactions)',
-    9: 'user_info["Деньги"] = menu[9]()',
-    10: 'menu[10](user_info["Деньги"])',
-    11: 'user_info, user_transactions = menu[11]()',
-    12: 'menu[12]()'
+    9: 'user_info["Деньги"] =  menu[9](login_and_password["Логин"], "user_info")',
+    10: 'user_info["Деньги"] = menu[10]()',
+    11: 'menu[11](user_info["Деньги"])',
+    13: 'menu[13]()'
 }
 
 if __name__ == "__main__":
@@ -333,23 +414,23 @@ if __name__ == "__main__":
             password_check_phrase = "Пароль введен"
         print(f'Выбирете операцию, которую хотите совершить:'
               f'\n1.Создать аккаунт\n'
-              ,'-'*10,
+              , '-' * 10,
               f'\n(При остуствии пользователя в сессии,'
               f'\nсоданный аккаунт автоматически входит в аккаунт. '
               f'\nПри присутствии пользователя в сессии,'
               f'\nзаменяет существующего пользователя на созданого).\n'
-              ,'-'*10,
+              , '-' * 10,
               f'\n2.Ввести пароль ({password_check_phrase}).'
               f'\n3.Положить деньги на счет.\n4.Снять деньги.\n5.Создать новую транзакцию.'
               f'\n6.Статистика по ожидаемым пополнениям.\n7.Применит ожидаймые транзакции к счету.'
-              f'\n8.Фильтрация ожидаемых транзакций.\n9.Выставить лимит на счет.\n10.Вывести баланс на экран.'
-              f'\n11.Войти или сменить в аккунт.\n12.Выйти из программы.')
+              f'\n8.Фильтрация ожидаемых транзакций.\n9.Создать перевод.\n10.Выставить лимит на счет.'
+              f'\n11.Вывести баланс на экран.\n12.Войти или сменить в аккунт.\n13.Выйти из программы.')
         print()
 
         try:
             menu_option = int(input("Введите номер операции здесь:"))
 
-            if menu_option in menu:
+            if menu_option in menu or menu_option == 12:
                 if menu_option == 1:
                     user_info, login_and_password, acc_created = create_acc()
                 elif menu_option == 2 and acc_created == 1:
@@ -358,15 +439,15 @@ if __name__ == "__main__":
                     for i in dic:
                         if menu_option == i:
                             exec(dic[i])
-                elif menu_option == 11:
+                elif menu_option == 12:
                     user_name = input("Введите ваше ФИО:")
                     user_info = upload_acc(user_name, "user_info")
                     user_info["Год.рождения"] = int(user_info["Год.рождения"])
                     user_transactions = upload_acc(user_name, "user_transactions")
                     login_and_password = upload_acc(user_name, "login-password")
                     acc_created = 1
-                elif menu_option == 12:
-                    exec(dic[12])
+                elif menu_option == 13:
+                    exec(dic[menu_option])
                 else:
                     print("Невозможно выполнить операцию. Ваш аккаунт еще не создан или не введен пароль.")
             else:
@@ -380,3 +461,4 @@ if __name__ == "__main__":
             save_acc(user_info, "user_info")
             save_acc(user_transactions, "user_transactions")
             save_acc(login_and_password, "login-password", login_and_password["Логин"])
+            user_info["Деньги"] = delayed_transaction_execution(user_info["Деньги"], login_and_password["Логин"])
