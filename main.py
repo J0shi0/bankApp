@@ -1,10 +1,12 @@
 from datetime import date
 import re
+import os
 
 acc_money = 0
 acc_created = 0
 password_val = 0
 user_info = {}
+login_and_password = {}
 user_transactions = {}
 
 
@@ -58,25 +60,29 @@ def create_acc():
     info = {
         "ФИО": input_initials(),
         "Год.рождения": input_birthyear(),
-        "Пароль": input_password(),
         'Деньги': 0,
         'Лимит': 0
     }
+    acc_info = {
+        "Логин": info['ФИО'],
+        "Пароль": password_hash(input_password())
+    }
     acc_val = 1
 
-    if info['ФИО'] is None or info['Год.рождения'] is None or info['Пароль'] is None:
+    if info['ФИО'] is None or info['Год.рождения'] is None or acc_info['Пароль'] is None:
         info = {}
+        acc_info = {}
         acc_val = 0
         print("Аккаунт не был зарегестрирован, из-за неправильного ввода данных.\n")
 
     else:
         print("Аккаунт успешно зарегистрирован!\n")
 
-    return info, acc_val
+    return info, acc_info, acc_val
 
 
 def password_check(password):
-    user_password = input("Введите пароль:")
+    user_password = password_hash(input("Введите пароль:"))
     if user_password == password:
         pass_val = 1
         print("Пароль верный.")
@@ -189,16 +195,6 @@ def filtering_transactions(transactions):
         print()
 
 
-def save_acc(info, transactions):
-    fw = open(str(user_info["ФИО"]) + 'data.txt', 'w')
-    for bit in info:
-        fw.write(str(bit) + "," + str(user_info[bit]) + ";")
-    fw.write("\n")
-    for name in transactions:
-        fw.write(str(name) + "|" + str(transactions[name]) + "\n")
-    fw.close()
-
-
 def print_balance(money):
     print("Ваш баланс:", money)
 
@@ -212,28 +208,80 @@ def set_limit():
         print('Лимит не может быть отрицательным.')
 
 
-def upload_acc():
+def save_acc(info, file_name, name=None):
+    if file_name == "login-password":
+        if not os.path.isfile("C:/Users/joji/PycharmProjects/bankingApp/login-password.txt"):
+            with open(f'{file_name}.txt', "a") as fir:
+                fir.close()
+            with open(f'{file_name}.txt', "w") as c:
+                for bit in info:
+                    c.write(f"{bit}|{info[bit]}|")
+                c.write(f"\n")
+                c.close()
+        else:
+            with open(f'{file_name}.txt', "r") as sec:
+                lines = "".join(sec.readlines()).split("\n")[:-1]
+                sec.close()
+            if len(lines) != 0:
+                with open(f'{file_name}.txt', "w") as b:
+                    for line in lines:
+                        if line.split("|")[1] != name:
+                            b.write(f'{line}\n')
+                        else:
+                            pass
+                    for bit in info:
+                        b.write(f"{bit}|{info[bit]}|")
+                    b.write(f"\n")
+                    b.close()
+
+    else:
+        fw = open(f'{file_name}_{user_info["ФИО"]}.txt', "w")
+        for bit in info:
+            fw.write(f"{bit}|{info[bit]}")
+            fw.write(f"\n")
+        fw.close()
+
+
+def upload_acc(name, file_name):
     try:
-        us_in = {}
-        name = input("Введите ваше ФИО:")
-        fr = open(name + 'data.txt', 'r')
-        u_d = fr.readline().split(";")[:-1]
-        for item in u_d:
-            key = item.split(",")[0]
-            value = item.split(",")[1]
-            us_in[key] = value
-        tran_data = {}
-        t_d = fr.read().split("\n")[:-1]
-        for tran in t_d:
-            com = tran.split("|")[0]
-            money = float(tran.split("|")[1])
-            tran_data[com] = money
+        if file_name == "login-password":
+            fr = open(f"{file_name}.txt", 'r')
+            data = {}
+            data_read = fr.read().split("\n")[:-1]
+            for bit in data_read:
+                if bit.split("|")[1] == name:
+                    for i in range(len(bit.split("|"))):
+                        if i % 2 == 0:
+                            com = bit.split("|")[i]
+                        else:
+                            info = bit.split("|")[i]
+                            data[com] = info
+        else:
+            fr = open(f"{file_name}_{name}.txt", 'r')
+            data = {}
+            data_read = fr.read().split("\n")[:-1]
+            for bit in data_read:
+                com = bit.split("|")[0]
+                if bit.split("|")[1].split(".")[0].isdigit():
+                    money = float(bit.split("|")[1])
+                    data[com] = money
+                else:
+                    info = bit.split("|")[1]
+                    data[com] = info
         fr.close()
-        print(f'Данные пользователя [{name}] успещно восстановлены.')
-        return us_in, tran_data
+        return data
     except FileNotFoundError:
         print('Пользователя с таким именем нет в сисетме.')
         exit()
+
+
+def password_hash(password):
+    symbol_sum = 0
+    symbol_product = 0
+    for symbol in password:
+        symbol_sum += ord(symbol)
+        symbol_product *= ord(symbol)
+    return str(symbol_sum % 1234001651) + str(symbol_product % 1234001651)
 
 
 def exit_program():
@@ -274,12 +322,28 @@ dic = {
 if __name__ == "__main__":
     while True:
         print()
-        print(
-            "Выбирете операцию, которую хотите совершить:\n1.Создать аккаунт\n2.Ввести пароль.\n"
-            "3.Положить деньги на счет\n4.Снять деньги\n5.Создать новую транзакцию\n"
-            "6.Статистика по ожидаемым пополнениям.\n7.Применит ожидаймые транзакции к счету.\n"
-            "8.Фильтрация ожидаемых транзакций.\n9.Выставить лимит на счет\n10.Вывести баланс на экран\n"
-            "11.Восстановить данные аккаунта данные аккаунта.\n12.Выйти из программы")
+        if len(user_info) != 0:
+            print(f'Пользователь: {user_info["ФИО"]}')
+        else:
+            print(f'Пользователь: ---')
+
+        if password_val == 0:
+            password_check_phrase = "Пароль не введен"
+        else:
+            password_check_phrase = "Пароль введен"
+        print(f'Выбирете операцию, которую хотите совершить:'
+              f'\n1.Создать аккаунт\n'
+              ,'-'*10,
+              f'\n(При остуствии пользователя в сессии,'
+              f'\nсоданный аккаунт автоматически входит в аккаунт. '
+              f'\nПри присутствии пользователя в сессии,'
+              f'\nзаменяет существующего пользователя на созданого).\n'
+              ,'-'*10,
+              f'\n2.Ввести пароль ({password_check_phrase}).'
+              f'\n3.Положить деньги на счет.\n4.Снять деньги.\n5.Создать новую транзакцию.'
+              f'\n6.Статистика по ожидаемым пополнениям.\n7.Применит ожидаймые транзакции к счету.'
+              f'\n8.Фильтрация ожидаемых транзакций.\n9.Выставить лимит на счет.\n10.Вывести баланс на экран.'
+              f'\n11.Войти или сменить в аккунт.\n12.Выйти из программы.')
         print()
 
         try:
@@ -287,17 +351,19 @@ if __name__ == "__main__":
 
             if menu_option in menu:
                 if menu_option == 1:
-                    user_info, acc_created = create_acc()
+                    user_info, login_and_password, acc_created = create_acc()
                 elif menu_option == 2 and acc_created == 1:
-                    password_val = password_check(user_info["Пароль"])
+                    password_val = password_check(login_and_password["Пароль"])
                 elif acc_created == 1 and password_val == 1:
                     for i in dic:
                         if menu_option == i:
                             exec(dic[i])
                 elif menu_option == 11:
-                    exec(dic[11])
-                    user_info['Деньги'] = float(user_info['Деньги'])
-                    user_info['Лимит'] = float(user_info['Лимит'])
+                    user_name = input("Введите ваше ФИО:")
+                    user_info = upload_acc(user_name, "user_info")
+                    user_info["Год.рождения"] = int(user_info["Год.рождения"])
+                    user_transactions = upload_acc(user_name, "user_transactions")
+                    login_and_password = upload_acc(user_name, "login-password")
                     acc_created = 1
                 elif menu_option == 12:
                     exec(dic[12])
@@ -311,4 +377,6 @@ if __name__ == "__main__":
             print()
 
         if len(user_info) != 0:
-            save_acc(user_info, user_transactions)
+            save_acc(user_info, "user_info")
+            save_acc(user_transactions, "user_transactions")
+            save_acc(login_and_password, "login-password", login_and_password["Логин"])
