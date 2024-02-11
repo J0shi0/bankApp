@@ -26,6 +26,7 @@ def input_initials():
 def input_birthyear():
     trys = 0
     while trys != 3:
+        try:
             today = date.today()
             birth_year = int(input("Введите год рождения:"))
             if len(str(birth_year)) == 4 and birth_year < today.year:
@@ -36,6 +37,9 @@ def input_birthyear():
                 print(f'Пожалуйста, введите число четырехзначное или не больше нынешнего года.\n'
                       f'Осталось {2 - trys} попытки.')
                 trys += 1
+        except ValueError:
+            print(f'Неправильный ввод')
+            trys += 1
     return
 
 
@@ -84,13 +88,16 @@ def password_check(password):
 
 
 def add_money(money, limit):
-    print(f'Лимит пополнения счета {limit}.')
-    added_money = float(input("Введите сумму пополнения:"))
-    if limit >= money + added_money or limit == 0:
-        money += added_money
-        print("Счёт успешно пополнен!")
-    else:
-        print("Превышен лимит.")
+    try:
+        print(f'Лимит пополнения счета {limit}.')
+        added_money = float(input("Введите сумму пополнения:"))
+        if limit >= money + added_money or limit == 0:
+            money += added_money
+            print("Счёт успешно пополнен!")
+        else:
+            print("Превышен лимит.")
+    except ValueError:
+        print(f'Колличество пополнения небходимо ввести число. Выберите операцию и попробуйте снова.')
     return money
 
 
@@ -106,6 +113,7 @@ def money_withdraw(money):
 
 
 def add_transaction(transactions):
+    try:
         trans_sum = float(input("Сумма транзакции:"))
         trans_comm = input("Коментарий к транзакции:")
         if len(transactions) == 0:
@@ -117,6 +125,8 @@ def add_transaction(transactions):
                 else:
                     transactions[trans_comm] = trans_sum
         print("Транзакция успешно добавлена")
+        return transactions
+    except ValueError:
         return transactions
 
 
@@ -203,6 +213,7 @@ def set_limit():
 
 
 def upload_acc():
+    try:
         us_in = {}
         name = input("Введите ваше ФИО:")
         fr = open(name + 'data.txt', 'r')
@@ -220,6 +231,9 @@ def upload_acc():
         fr.close()
         print(f'Данные пользователя [{name}] успещно восстановлены.')
         return us_in, tran_data
+    except FileNotFoundError:
+        print('Пользователя с таким именем нет в сисетме.')
+        exit()
 
 
 def exit_program():
@@ -268,6 +282,7 @@ if __name__ == "__main__":
             "11.Восстановить данные аккаунта данные аккаунта.\n12.Выйти из программы")
         print()
 
+        try:
             menu_option = int(input("Введите номер операции здесь:"))
 
             if menu_option in menu:
@@ -291,6 +306,9 @@ if __name__ == "__main__":
             else:
                 print("Неправильно введен номер операции.")
 
+        except ValueError:
+            print("Недопустимый ввод!")
+            print()
 
-    if len(user_info) != 0:
-        save_acc(user_info, user_transactions)
+        if len(user_info) != 0:
+            save_acc(user_info, user_transactions)
