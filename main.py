@@ -49,11 +49,12 @@ def input_password():
     trys = 0
     while trys != 3:
         password = input("Создайте пароль для аккаунта:")
-        if password.strip():
+        if "".join(password.split()):
             return password
-        print(f"Пожалуйста, введите пароль.\nОсталось {2 - trys} попытки.")
-        trys += 1
-        return
+        else:
+            print(f"Пожалуйста, введите пароль без пробелов.\nОсталось {2 - trys} попытки.")
+            trys += 1
+    return
 
 
 def create_acc():
@@ -82,8 +83,8 @@ def create_acc():
 
 
 def password_check(password):
-    user_password = password_hash(input("Введите пароль:"))
-    if user_password == password:
+    inputed_password = password_hash(input("Введите пароль:"))
+    if inputed_password == password:
         pass_val = 1
         print("Пароль верный.")
         return pass_val
@@ -108,14 +109,18 @@ def add_money(money, limit):
 
 
 def money_withdraw(money):
-    print(f"Ваш баланс: {money}")
-    withdraw_amount = int(input("Введите сумму для снятия:"))
-    if withdraw_amount <= money:
-        money -= withdraw_amount
-        print(f"Снятие успешно завершено, ваш баланс: {money}")
+    try:
+        print(f"Ваш баланс: {money}")
+        withdraw_amount = int(input("Введите сумму для снятия:"))
+        if withdraw_amount <= money:
+            money -= withdraw_amount
+            print(f"Снятие успешно завершено, ваш баланс: {money}")
+        else:
+            print("Запрашиваемая сумма для снятния больше, чем ваш балланс.\nЗарешаем операцию.")
         return money
-    else:
-        print("Запрашиваемая сумма для снятния больше, чем ваш балланс.\nЗарешаем операцию.")
+    except ValueError:
+        print("Неправильный ввод. Небходимо ввести число.\nЗарешаем операцию.")
+        return money
 
 
 def add_transaction(transactions):
@@ -195,20 +200,23 @@ def filtering_transactions(transactions):
         print()
 
 
-def found_str_value(part, str_name):
-    with open(f"user_info_{part}.txt", 'r') as f:
-        lines = f.read().split("\n")[:-1]
-        for line in lines:
-            if line.split("|")[0] == str_name:
-                value = float(line.split("|")[1])
-            else:
-                pass
-        f.close()
-    return value
+def found_str_value(part, str_name, file_name):
+    try:
+        with open(f"{file_name + "_"}{part}.txt", 'r') as f:
+            lines = f.read().split("\n")[:-1]
+            for line in lines:
+                if line.split("|")[0] == str_name:
+                    value = float(line.split("|")[1])
+                else:
+                    pass
+            f.close()
+        return value
+    except (UnboundLocalError, FileNotFoundError) as error:
+        raise RuntimeError("Скорее всего функция не нашла нужную строку или файл.") from error
 
 
 def overwrite_string_value(part, str_name, file_name, new_value):
-    with open(f'{file_name}_{part}.txt', "r") as f:
+    with open(f'{file_name + "_"}{part}.txt', "r") as f:
         lines = f.read().split("\n")[:-1]
         f.close()
     with open(f'{file_name}_{part}.txt', "w") as b:
@@ -220,15 +228,15 @@ def overwrite_string_value(part, str_name, file_name, new_value):
         b.close()
 
 
-def create_transactions(sender, file_name):
+def create_transactions(sender, sender_money, file_name):
     print(f'Отправитель: {sender}')
     recipient = input(f'Введите имя получателя:')
-    sender_money = found_str_value(sender, "Деньги")
-    print(f'Если на счете получателя недостаточно денег, '
-          f'то будет операция будет оложена до пополнения счета отправителя.')
-    transaction_amount = float(input(f'Введите сумму, которыую хотите отправить:'))
     try:
-        recipient_money = found_str_value(recipient, "Деньги")
+        sender_money = found_str_value(sender, "Деньги", "user_info")
+        print(f'Если на счете получателя недостаточно денег, '
+              f'то будет операция будет оложена до пополнения счета отправителя.')
+        transaction_amount = float(input(f'Введите сумму, которыую хотите отправить:'))
+        recipient_money = found_str_value(recipient, "Деньги", "user_info")
         if sender_money >= transaction_amount:
             overwrite_string_value(sender, "Деньги", file_name, sender_money - transaction_amount)
             overwrite_string_value(recipient, "Деньги", file_name, recipient_money + transaction_amount)
@@ -239,7 +247,7 @@ def create_transactions(sender, file_name):
                 f.write(f'{sender}|{recipient}|{transaction_amount}\n')
                 f.close()
             return sender_money
-    except FileNotFoundError:
+    except (FileNotFoundError, RuntimeError):
         print(f'В системе нет пользователя с именем {recipient}.')
         return sender_money
 
@@ -339,8 +347,8 @@ def delayed_transaction_execution(money, name=None):
         lines = f.read().split("\n")[:-1]
         for line in lines:
             value = float(line.split("|")[2])
-            sen_mon = found_str_value(line.split("|")[0], "Деньги")
-            res_mon = found_str_value(line.split("|")[1], "Деньги")
+            sen_mon = found_str_value(line.split("|")[0], "Деньги", "user_info")
+            res_mon = found_str_value(line.split("|")[1], "Деньги", "user_info")
             if sen_mon > value:
                 overwrite_string_value(line.split("|")[0], "Деньги", "user_info", sen_mon - value)
                 overwrite_string_value(line.split("|")[1], "Деньги", "user_info", res_mon + value)
@@ -394,7 +402,7 @@ dic = {
     6: 'menu[6](user_transactions)',
     7: 'user_transactions, acc_money = menu[7](user_transactions, user_info["Деньги"], user_info["Лимит"])',
     8: 'menu[8](user_transactions)',
-    9: 'user_info["Деньги"] =  menu[9](login_and_password["Логин"], "user_info")',
+    9: 'user_info["Деньги"] =  menu[9](login_and_password["Логин"], user_info["Деньги"], "user_info")',
     10: 'user_info["Деньги"] = menu[10]()',
     11: 'menu[11](user_info["Деньги"])',
     13: 'menu[13]()'
