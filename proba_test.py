@@ -217,7 +217,7 @@ def test_empty_dictionary():
     assert result is None
 
 
-def est_limit_not_exceeded():
+def test_limit_not_exceeded():
     transac = {'transaction1': 100, 'transaction2': 200, 'transaction3': 300}
     money = 500
     limit = 1500
@@ -378,3 +378,11 @@ def test_overwrites_file_to_origin_if_nonexistent_string():
 
     assert lines[0].split("|")[0] == 'other_string'
     assert lines[0].split("|")[1] == 'old_value'
+
+
+def add_line_to_file(file_name, info):
+    fw = open(f'{file_name}_{info["ФИО"]}.txt', "w")
+    for bit in info:
+        fw.write(f"{bit}|{info[bit]}")
+        fw.write(f"\n")
+    fw.close()

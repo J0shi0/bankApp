@@ -69,17 +69,19 @@ def create_acc():
         "Пароль": password_hash(input_password())
     }
     acc_val = 1
+    pas_val = 0
 
     if info['ФИО'] is None or info['Год.рождения'] is None or acc_info['Пароль'] is None:
         info = {}
         acc_info = {}
-        acc_val = 0
+        acc_val = 1
+        pas_val = 0
         print("Аккаунт не был зарегестрирован, из-за неправильного ввода данных.\n")
 
     else:
         print("Аккаунт успешно зарегистрирован!\n")
 
-    return info, acc_info, acc_val
+    return info, acc_info, acc_val, pas_val
 
 
 def password_check(password):
@@ -228,9 +230,30 @@ def overwrite_string_value(part, str_name, file_name, new_value):
         b.close()
 
 
+def list_of_recipients(sender):
+    with open('login-password.txt', "r") as fr:
+        lines = fr.read().split("\n")[:-1]
+        fr.close()
+    for line in lines:
+        if line.split("|")[1] != sender:
+            yield line.split("|")[1]
+        elif len(lines) == 1 and line.split("|")[1] == sender:
+            return
+
+
 def create_transactions(sender, sender_money, file_name):
     print(f'Отправитель: {sender}')
+
+    print()
+    print(f'Лист отправителей в системе:')
+    for participient in list_of_recipients(sender):
+        if participient is None:
+            return sender_money
+        else:
+            print(participient)
+    print()
     recipient = input(f'Введите имя получателя:')
+
     try:
         sender_money = found_str_value(sender, "Деньги", "user_info")
         print(f'Если на счете получателя недостаточно денег, '
@@ -244,6 +267,8 @@ def create_transactions(sender, sender_money, file_name):
             return sender_money - transaction_amount
         else:
             with open(f'delayed_transactions.txt', "a") as f:
+                print(f'На вашем счету недостаточно средаств.\n Создан отложенный перевод:'
+                      f' Отправитель:{sender}|Получатель:{recipient}|Сумма перевода:{transaction_amount}')
                 f.write(f'{sender}|{recipient}|{transaction_amount}\n')
                 f.close()
             return sender_money
@@ -267,7 +292,8 @@ def set_limit():
 
 def save_acc(info, file_name, name=None):
     if file_name == "login-password":
-        if not os.path.isfile("C:/Users/joji/PycharmProjects/bankingApp/login-password.txt"):
+        current_directory = os.getcwd()
+        if not os.path.isfile(f"{current_directory}\\login-password.txt"):
             with open(f'{file_name}.txt', "a") as fir:
                 fir.close()
             with open(f'{file_name}.txt', "w") as c:
@@ -343,25 +369,28 @@ def delete_line(file_path, line_number):
 
 def delayed_transaction_execution(money, name=None):
     current_user_mon = money
-    with open(f"delayed_transactions.txt", 'r') as f:
-        lines = f.read().split("\n")[:-1]
-        for line in lines:
-            value = float(line.split("|")[2])
-            sen_mon = found_str_value(line.split("|")[0], "Деньги", "user_info")
-            res_mon = found_str_value(line.split("|")[1], "Деньги", "user_info")
-            if sen_mon > value:
-                overwrite_string_value(line.split("|")[0], "Деньги", "user_info", sen_mon - value)
-                overwrite_string_value(line.split("|")[1], "Деньги", "user_info", res_mon + value)
-                delete_line("delayed_transactions.txt", lines.index(line))
-                if name == line.split("|")[0]:
-                    current_user_mon = sen_mon - value
-            else:
-                pass
-    f.close()
-    if current_user_mon is not None:
+    try:
+        with open(f"delayed_transactions.txt", 'r') as f:
+            lines = f.read().split("\n")[:-1]
+            for line in lines:
+                value = float(line.split("|")[2])
+                sen_mon = found_str_value(line.split("|")[0], "Деньги", "user_info")
+                res_mon = found_str_value(line.split("|")[1], "Деньги", "user_info")
+                if sen_mon > value:
+                    overwrite_string_value(line.split("|")[0], "Деньги", "user_info", sen_mon - value)
+                    overwrite_string_value(line.split("|")[1], "Деньги", "user_info", res_mon + value)
+                    delete_line("delayed_transactions.txt", lines.index(line))
+                    if name == line.split("|")[0]:
+                        current_user_mon = sen_mon - value
+                else:
+                    pass
+        f.close()
+        if current_user_mon is not None:
+            return current_user_mon
+        else:
+            return sen_mon
+    except FileNotFoundError:
         return current_user_mon
-    else:
-        return sen_mon
 
 
 def password_hash(password):
@@ -440,7 +469,7 @@ if __name__ == "__main__":
 
             if menu_option in menu or menu_option == 12:
                 if menu_option == 1:
-                    user_info, login_and_password, acc_created = create_acc()
+                    user_info, login_and_password, acc_created, password_val = create_acc()
                 elif menu_option == 2 and acc_created == 1:
                     password_val = password_check(login_and_password["Пароль"])
                 elif acc_created == 1 and password_val == 1:
